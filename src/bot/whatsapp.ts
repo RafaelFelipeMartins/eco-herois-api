@@ -1,7 +1,6 @@
 import { Client, LocalAuth, Message } from 'whatsapp-web.js';
 // @ts-ignore
 import qrcode from 'qrcode-terminal';
-import { evaluate } from 'mathjs';
 
 export function initWhatsApp(): void {
   const client = new Client({
@@ -23,7 +22,7 @@ export function initWhatsApp(): void {
 
     if (regexCalc.test(input)) {
       try {
-        const result = evaluate(input);
+        const result = input;
         await msg.reply(`🧮 Resultado: ${result}`);
       } catch {
         await msg.reply('❌ Input inválido');
