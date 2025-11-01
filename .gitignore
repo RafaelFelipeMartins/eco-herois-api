@@ -1,0 +1,45 @@
+# ============================
+# Node & TypeScript
+# ============================
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ============================
+# WhatsApp Web Sessions
+# ============================
+# LocalAuth salva as sessões aqui
+.wwebjs_auth/
+.wwebjs_cache/
+
+# ============================
+# Editor / Sistema
+# ============================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ============================
+# TypeScript
+# ============================
+*.tsbuildinfo
+
+# ============================
+# Runtime Data
+# ============================
+tmp/
+temp/
