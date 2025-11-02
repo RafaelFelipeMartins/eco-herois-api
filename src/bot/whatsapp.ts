@@ -164,8 +164,6 @@ export function initWhatsApp() {
             state.description = analysis;
             response = `📸 Análise da imagem:\n\n${analysis}\n\n${confirmationQuestion}`;
           }
-        } else {
-          response = "📸 Por favor, envie uma *imagem* para começar.";
         }
         break;
 
