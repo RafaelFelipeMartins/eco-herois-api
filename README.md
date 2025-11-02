@@ -1,6 +1,18 @@
-# Eco Heróis Bot 🌱
+# 🌿 Eco Heróis Bot
 
-Um bot do WhatsApp que ajuda a mapear locais de descarte inadequado de resíduos usando análise de imagens com IA.
+## 👥 Membros da Equipe
+- **Emanuel Zaveruka** — [emanuelzaveruka@gmail.com](mailto:emanuelzaveruka@gmail.com)  
+- **Rafael Felipe Martins** — [rafaelfelipe.martins18@gmail.com](mailto:rafaelfelipe.martins18@gmail.com)  
+- **Felipe Bassetti** — [bassettifelipe@gmail.com](mailto:bassettifelipe@gmail.com)  
+- **Vitor Hugo** — [vitorhugo-57@hotmail.com](mailto:vitorhugo-57@hotmail.com)
+
+---
+
+## 🌎 Sobre o Projeto
+O **Eco Heróis Bot** nasceu com o propósito de engajar cidadãos e escolas no combate ao descarte irregular de resíduos, conectando **tecnologia, educação e sustentabilidade** de forma gamificada.  
+Ele utiliza um bot do **WhatsApp** integrado com **IA de visão** para identificar lixo em fotos e mapear os locais reportados pelos usuários.
+
+---
 
 ## Funcionalidades 🚀
 
@@ -11,12 +23,24 @@ Um bot do WhatsApp que ajuda a mapear locais de descarte inadequado de resíduos
 - Geração e armazenamento de relatórios 
 - Endpoints de API REST
 
-## Pré-requisitos 📋
+---
 
-- Node.js
-- PostgreSQL
-- Conta no WhatsApp
-- Chave de API da OpenAI
+## 🧰 Tecnologias Principais
+
+- **Node.js + Express** — Servidor e API REST  
+- **PostgreSQL + Knex** — Banco de dados e migrações  
+- **WhatsApp Web.js** — Integração com WhatsApp  
+- **OpenAI GPT-4 Vision** — Análise de imagens com IA  
+
+---
+
+## 📋 Pré-requisitos
+
+- Node.js (v18+ recomendado)  
+- PostgreSQL  
+- Conta no WhatsApp  
+- Chave de API da OpenAI  
+---
 
 ## Instalação 🔧
 
