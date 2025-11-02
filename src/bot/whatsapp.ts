@@ -40,6 +40,14 @@ const thankYouMessage = `
 Tenha um ótimo dia!
 `;
 
+/** ✅ Função utilitária: salvar arquivo */
+function saveFile(dir: string, fileName: string, data: string, encoding: BufferEncoding = "base64"): string {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const filePath = path.join(dir, fileName);
+  fs.writeFileSync(filePath, data, { encoding });
+  return filePath;
+}
+
 // 📸 Função de análise da imagem
 async function analyzeImage(imagePath: string): Promise<string> {
   const base64Image = fs.readFileSync(imagePath, "base64");
@@ -49,11 +57,9 @@ async function analyzeImage(imagePath: string): Promise<string> {
     - Descreva brevemente os tipos de lixo visíveis (ex.: plástico, vidro, papel, metal, orgânico).
     - Cite marcas, logotipos ou rótulos identificáveis, se houver.
     - Informe elementos de contexto do local, como rua, parque, praia, rio, etc.
-
     Regras especiais:
     - Se a imagem parecer gerada por IA, ilustração, pintura ou irreal, responda exatamente: <fake>.
     - Se não houver lixo visível, responda exatamente: <not-found>.
-
     Responda de forma objetiva, sem comentários adicionais nem explicações.
   `
 
@@ -70,7 +76,7 @@ async function analyzeImage(imagePath: string): Promise<string> {
           {
             type: "input_image",
             image_url: `data:image/jpeg;base64,${base64Image}`,
-            detail: "high"
+            detail: "high",
           },
         ],
       },
@@ -82,129 +88,130 @@ async function analyzeImage(imagePath: string): Promise<string> {
     .flatMap((item: any) => item.content || [])
     .find((c: any) => c.type === "output_text");
 
-  if (!textOutput) {
-    throw new Error("No text output found in OpenAI response");
-  }
-
+  if (!textOutput) throw new Error("Nenhuma saída de texto encontrada na resposta da OpenAI.");
   return textOutput.text.trim();
 }
 
-// 🔄 Estado de conversa temporário
-interface UserState {
-  stage: "intro" | "image" | "confirm" | "location" | "done";
-  imagePath?: string;
-  description?: string;
-}
+/** ✅ Função principal de inicialização do WhatsApp */
+export function initWhatsApp() {
+  const client = new Client({
+    authStrategy: new LocalAuth({
+      dataPath: './.wwebjs_auth',
+      clientId: 'eco-herois-bot',
+    }),
+    puppeteer: {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    },
+  });
 
-const userState = new Map<string, UserState>();
+    // 🔄 Estado de conversa temporário
+  interface UserState {
+    stage: "intro" | "image" | "confirm" | "location" | "done";
+    imagePath?: string;
+    description?: string;
+  }
 
-// 🚀 Inicialização
-client.on("qr", (qr) => {
-  console.log("📲 Escaneie o QR code abaixo para conectar:");
-  qrcode.generate(qr, { small: true });
-});
+  const userState = new Map<string, UserState>();
 
-client.on("ready", () => {
-  console.log("✅ Bot conectado e pronto!");
-});
+  client.on("qr", (qr) => {
+    console.log("📲 Escaneie o QR code abaixo para conectar:");
+    qrcode.generate(qr, { small: true });
+  });
 
-client.on("message", async (msg: Message) => {
-  const chat: Chat = await msg.getChat();
-  const from = msg.from;
+  client.on("ready", () => {
+    console.log("✅ Bot conectado e pronto!");
+  });
 
-  if (chat.isGroup || !allowedNumbers.includes(from)) return;
+  client.on("message", async (msg: Message) => {
+    const chat: Chat = await msg.getChat();
+    const from = msg.from;
 
-  const state = userState.get(from) || { stage: "intro" };
-  if (msg.type === "image") state.stage = "image"
+    // 🔒 Ignora grupos e números não autorizados
+    if (chat.isGroup || !allowedNumbers.includes(from)) return;
 
-  let response = "";
+    const state = userState.get(from) || { stage: "intro" };
+    if (msg.type === "image") state.stage = "image"
 
-  switch (state.stage) {
-    case "intro":
-      response = introMessage;
-      state.stage = "image";
-      break;
+    let response = "";
 
-    case "image":
-      if (msg.type === "image") {
-        const media = await msg.downloadMedia();
-        if (!media?.data) {
-          response = "⚠️ Não consegui baixar a imagem, envie novamente.";
-          break;
-        }
-
-        const dir = "./uploads";
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-        const imagePath = path.join(dir, `report_${Date.now()}.jpg`);
-        fs.writeFileSync(imagePath, media.data, { encoding: "base64" });
-
-        chat.sendStateTyping();
-        const analysis = await analyzeImage(imagePath);
-
-        if (analysis.includes("<fake>")) {
-          response = "⚠️ Imagem não parece ser real. Tente enviar outra.";
-        } else if (analysis.includes("<not-found>")) {
-          response = "🧹 Não identifiquei lixo na imagem. Tente outra foto, por favor.";
-        } else {
-          state.stage = "confirm";
-          state.imagePath = imagePath;
-          state.description = analysis;
-          response = `📸 Análise da imagem:\n\n${analysis}\n\n${confirmationQuestion}`;
-        }
-      }
-      break;
-
-    case "confirm":
-      if (msg.body.toLowerCase().includes("sim")) {
-        state.stage = "location";
-        response = locationRequest;
-      } else if (msg.body.toLowerCase().includes("não")) {
-        response = "😅 Tudo bem! Envie novamente a *foto correta*.";
+    switch (state.stage) {
+      case "intro":
+        response = introMessage;
         state.stage = "image";
-      } else {
-        response = "Por favor, responda apenas com *sim* ou *não*.";
-      }
-      break;
+        break;
 
-    case "location":
-      if (msg.type === "location" || msg.type === "chat") {
-        const locationData =
-          msg.type === "location"
-            ? `Latitude: ${msg.location?.latitude}, Longitude: ${msg.location?.longitude}`
-            : msg.body.trim();
+      case "image":
+        if (msg.type === "image") {
+          const media = await msg.downloadMedia();
+          if (!media?.data) {
+            response = "⚠️ Não consegui baixar a imagem, envie novamente.";
+            break;
+          }
 
-        const reportDir = "./reports";
-        if (!fs.existsSync(reportDir)) fs.mkdirSync(reportDir);
+          const imagePath = saveFile("./uploads", `report_${Date.now()}.jpg`, media.data);
 
-        const reportContent = `
-          Descrição: ${state.description}
-          Localização: ${locationData}
-          Imagem: ${state.imagePath}
-          Data: ${new Date().toLocaleString()}
-        `;
+          chat.sendStateTyping();
+          const analysis = await analyzeImage(imagePath);
 
-        fs.writeFileSync(
-          path.join(reportDir, `report_${Date.now()}.txt`),
-          reportContent
-        );
+          if (analysis.includes("<fake>")) {
+            response = "⚠️ Imagem não parece ser real. Tente enviar outra.";
+          } else if (analysis.includes("<not-found>")) {
+            response = "🧹 Não identifiquei lixo na imagem. Tente outra foto, por favor.";
+          } else {
+            state.stage = "confirm";
+            state.imagePath = imagePath;
+            state.description = analysis;
+            response = `📸 Análise da imagem:\n\n${analysis}\n\n${confirmationQuestion}`;
+          }
+        } else {
+          response = "📸 Por favor, envie uma *imagem* para começar.";
+        }
+        break;
 
-        response = thankYouMessage;
-        state.stage = "done";
-      } else {
-        response = "📍 Envie a localização ou um endereço válido.";
-      }
-      break;
+      case "confirm":
+        if (msg.body.toLowerCase().includes("sim")) {
+          state.stage = "location";
+          response = locationRequest;
+        } else if (msg.body.toLowerCase().includes("não")) {
+          response = "😅 Tudo bem! Envie novamente a *foto correta*.";
+          state.stage = "image";
+        } else {
+          response = "Por favor, responda apenas com *sim* ou *não*.";
+        }
+        break;
 
-    case "done":
-      response = "🌍 Obrigado novamente! Caso queira fazer outro envio, reinicie a conversa.";
-      break;
-  }
+      case "location":
+        if (msg.type === "location" || msg.type === "chat") {
+          const locationData =
+            msg.type === "location"
+              ? `Latitude: ${msg.location?.latitude}, Longitude: ${msg.location?.longitude}`
+              : msg.body.trim();
 
-  userState.set(from, state);
+          const reportContent = `
+            Descrição: ${state.description}
+            Localização: ${locationData}
+            Imagem: ${state.imagePath}
+            Data: ${new Date().toLocaleString()}
+          `.trim();
 
-  if (response) {
-    await msg.reply(response);
-  }
-});
+          saveFile("./reports", `report_${Date.now()}.txt`, reportContent, "utf-8");
 
-client.initialize();
+          response = thankYouMessage;
+          state.stage = "done";
+        } else {
+          response = "📍 Envie a localização ou um endereço válido.";
+        }
+        break;
+
+      case "done":
+        response = "🌍 Obrigado novamente! Caso queira fazer outro envio, reinicie a conversa.";
+        break;
+    }
+
+    userState.set(from, state);
+    if (response) await msg.reply(response);
+  });
+
+  client.initialize();
+}
