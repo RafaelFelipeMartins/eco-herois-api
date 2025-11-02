@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
-import { Client, LocalAuth, Message, Chat } from "whatsapp-web.js";
+import pkg from "whatsapp-web.js";
+const { Client, LocalAuth } = pkg;
+import type { Message, Chat } from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 import fs from "fs";
 import path from "path";
@@ -23,9 +25,10 @@ const client = new Client({
 
 // 🗣️ Mensagens padrão
 const introMessage = `
-👋 Olá! Eu sou o bot do *EcoLendas* ♻️  
-Eu te ajudo a mapear locais com descarte incorreto de lixo.  
-Envie uma *foto* de um local poluído para começarmos!
+👋 Olá! Eu sou o bot do *Eco Heróis* ♻️
+Eu te ajudo a mapear locais com descarte incorreto de lixo.
+
+📸 Por favor, envie uma *imagem* do local com lixo para começarmos.";
 `;
 
 const confirmationQuestion = `Essa descrição está correta?\n\nResponda com *sim* ou *não*.`;
@@ -33,25 +36,33 @@ const confirmationQuestion = `Essa descrição está correta?\n\nResponda com *s
 const locationRequest = `📍 Agora, por favor, compartilhe a localização exata ou envie o endereço do local da foto.`;
 
 const thankYouMessage = `
-✅ Obrigado! Sua contribuição ajuda a combater a poluição e proteger o meio ambiente 🌱  
+✅ Obrigado! Sua contribuição ajuda a combater a poluição e proteger o meio ambiente 🌱
 Tenha um ótimo dia!
 `;
 
 // 📸 Função de análise da imagem
 async function analyzeImage(imagePath: string): Promise<string> {
   const base64Image = fs.readFileSync(imagePath, "base64");
+  const systemPrompt = `
+    Você é um assistente especializado em análise visual para detecção de lixo em imagens.
+    Ao receber uma imagem:
+    - Descreva brevemente os tipos de lixo visíveis (ex.: plástico, vidro, papel, metal, orgânico).
+    - Cite marcas, logotipos ou rótulos identificáveis, se houver.
+    - Informe elementos de contexto do local, como rua, parque, praia, rio, etc.
+
+    Regras especiais:
+    - Se a imagem parecer gerada por IA, ilustração, pintura ou irreal, responda exatamente: <fake>.
+    - Se não houver lixo visível, responda exatamente: <not-found>.
+
+    Responda de forma objetiva, sem comentários adicionais nem explicações.
+  `
 
   const response = await openai.responses.create({
     model: "gpt-4.1-mini",
     input: [
       {
         role: "system",
-        content: `
-          Você é um assistente que analisa imagens para detectar lixo.
-          Você deve descrever brevemente os tipos de lixo presentes, marcas de produtos identificadas e o cenário.
-          Se a imagem parecer falsa, responda apenas "Imagem não aparenta ser verdadeira".
-          Se não houver lixo, responda "Lixo não encontrado".
-        `,
+        content: systemPrompt.replace(/\s\s+/g, ' '),
       },
       {
         role: "user",
@@ -104,6 +115,8 @@ client.on("message", async (msg: Message) => {
   if (chat.isGroup || !allowedNumbers.includes(from)) return;
 
   const state = userState.get(from) || { stage: "intro" };
+  if (msg.type === "image") state.stage = "image"
+
   let response = "";
 
   switch (state.stage) {
@@ -125,11 +138,12 @@ client.on("message", async (msg: Message) => {
         const imagePath = path.join(dir, `report_${Date.now()}.jpg`);
         fs.writeFileSync(imagePath, media.data, { encoding: "base64" });
 
+        chat.sendStateTyping();
         const analysis = await analyzeImage(imagePath);
 
-        if (analysis.includes("não aparenta ser verdadeira")) {
-          response = "⚠️ Imagem não parece real. Tente enviar outra.";
-        } else if (analysis.includes("Lixo não encontrado")) {
+        if (analysis.includes("<fake>")) {
+          response = "⚠️ Imagem não parece ser real. Tente enviar outra.";
+        } else if (analysis.includes("<not-found>")) {
           response = "🧹 Não identifiquei lixo na imagem. Tente outra foto, por favor.";
         } else {
           state.stage = "confirm";
@@ -137,8 +151,6 @@ client.on("message", async (msg: Message) => {
           state.description = analysis;
           response = `📸 Análise da imagem:\n\n${analysis}\n\n${confirmationQuestion}`;
         }
-      } else {
-        response = "📸 Por favor, envie uma *imagem* do local com lixo.";
       }
       break;
 
@@ -165,10 +177,10 @@ client.on("message", async (msg: Message) => {
         if (!fs.existsSync(reportDir)) fs.mkdirSync(reportDir);
 
         const reportContent = `
-Descrição: ${state.description}
-Localização: ${locationData}
-Imagem: ${state.imagePath}
-Data: ${new Date().toLocaleString()}
+          Descrição: ${state.description}
+          Localização: ${locationData}
+          Imagem: ${state.imagePath}
+          Data: ${new Date().toLocaleString()}
         `;
 
         fs.writeFileSync(
