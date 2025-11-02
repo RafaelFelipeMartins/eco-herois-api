@@ -9,11 +9,11 @@ const config: { [key: string]: Knex.Config } = {
         connection: {
             host: process.env.DB_HOST || "localhost",
             user: process.env.DB_USER || "postgres",
-            password: process.env.DB_PASS || "postgres",
-            database: process.env.DB_NAME || "meubanco",
+            password: process.env.DB_PASS || "123456",
+            database: process.env.DB_NAME || "ecozap",
         },
         migrations: {
-            directory: "./src/database/migrations",
+            directory: "./migrations",
         },
     },
 };

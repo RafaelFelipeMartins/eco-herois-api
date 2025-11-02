@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { initWhatsApp } from './bot/whatsapp';
 import userRoutes from "./routes/userRoutes";
-import captureRouter from "./routes/imagesRouter";
+import imagesRouter from "./routes/imagesRouter";
 import dotenv from "dotenv";
 import cors from "cors";
 
@@ -22,7 +22,7 @@ app.get('/health', (_req: Request, res: Response) => {
 initWhatsApp();
 
 app.use("/user", userRoutes);
-app.use("/capture", captureRouter);
+app.use("/capture", imagesRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
